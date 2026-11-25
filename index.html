@@ -64,6 +64,18 @@ function setupRealtime(){if(cloudChannel) supabaseClient.removeChannel(cloudChan
 supabaseClient.auth.getSession().then(({data})=>{if(data.session?.user)initializeCloud(data.session.user);});
 function day(){if(!store[todayKey()])store[todayKey()]=emptyDay();normalizeDay(store[todayKey()]);return store[todayKey()]}
 function normalizeDay(d){if(!d.goals)d.goals={hours:0,mcqs:0,revision:0};if(!Array.isArray(d.sessions))d.sessions=[];if(!d.mcq)d.mcq={attempted:0,correct:0,test:''};if(!Array.isArray(d.revision))d.revision=[];const uniqueRevision=new Map();[...REVISION_DEFAULT,...d.revision].forEach(item=>{const text=typeof item==='string'?item:item?.text;if(!text)return;const clean=String(text).trim();if(!clean)return;const key=clean.toLowerCase();const old=uniqueRevision.get(key);uniqueRevision.set(key,{text:clean,done:!!(item?.done||old?.done)});});d.revision=[...uniqueRevision.values()];['affairs','notes','improve','plan','topics','mocks'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});if(!d.status)d.status='Not Completed';if(typeof d.reflection!=='string')d.reflection='';}
+function cleanupAllRevisionDuplicates(){
+  let changed=false;
+  Object.keys(store).forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k)||!store[k]||typeof store[k]!=='object')return;
+    const d=store[k];
+    const before=Array.isArray(d.revision)?d.revision.length:0;
+    normalizeDay(d);
+    if(before!==d.revision.length)changed=true;
+  });
+  if(changed)localStorage.setItem('kpscTracker',JSON.stringify(store));
+  return changed;
+}
 function allDays(){return Object.keys(store).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort()}
 function totalHours(d){return (d.sessions||[]).reduce((s,x)=>s+Number(x.hours||0),0)}function totalMcq(d){return Number(d.mcq?.attempted||0)}function accuracy(d){let a=totalMcq(d),c=Number(d.mcq?.correct||0);return a?Math.round(c/a*100):0}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -105,5 +117,6 @@ function exportJSON(){downloadFile('fasila-kpsc-study-studio-backup-'+todayKey()
 function exportCSV(){let lines=[['Date','Hours','MCQs Attempted','Correct','Accuracy %','Status','Topics']];allDays().forEach(k=>{let d=store[k];lines.push([k,totalHours(d),totalMcq(d),d.mcq?.correct||0,accuracy(d),d.status,(d.topics||[]).map(t=>t.subject+': '+t.text).join('; ')]);});let csv=lines.map(row=>row.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');downloadFile('fasila-kpsc-study-records-'+todayKey()+'.csv',csv,'text/csv;charset=utf-8')}
 function restoreJSON(){let f=document.getElementById('backupFile').files[0];if(!f)return alert('Choose a JSON backup file.');let r=new FileReader();r.onload=()=>{try{let obj=JSON.parse(r.result);if(!obj||typeof obj!=='object'||Array.isArray(obj))throw Error('Invalid data');if(confirm('Replace all current tracker data with this backup?')){store=obj;persist();render();if(currentUser)allDays().forEach(k=>queueCloudSave(k));alert('Backup restored.')}}catch(e){alert('Could not read valid backup JSON.')}};r.readAsText(f)}
 function resetData(){if(confirm('Clear all KPSC tracker data from this browser? This cannot be undone.')){store={};persist(true);render();if(currentUser)supabaseClient.from('kpsc_study_days').delete().eq('user_id',currentUser.id).then(({error})=>{if(error)alert('Local data cleared; cloud delete failed.');});alert('Data cleared.')}}
+cleanupAllRevisionDuplicates();
 render();
 </script></body></html>

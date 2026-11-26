@@ -183,4 +183,15 @@ render();
 })();
 </script>
 
+
+<script>
+(function(){
+ const REMOVE_TITLES=new Set(['Current Affairs Covered','Important Points / Notes','Next Day Plan']);
+ function cleanDaily(){const daily=document.getElementById('daily');if(!daily)return;daily.querySelectorAll('.card').forEach(card=>{const h=card.querySelector('h2');if(h&&REMOVE_TITLES.has(h.textContent.trim()))card.remove();});}
+ cleanDaily();
+ const prev=window.render; if(typeof prev==='function'&&!prev.__dailyCleanWrapped){const wrapped=function(){prev();cleanDaily();};wrapped.__dailyCleanWrapped=true;window.render=wrapped;}
+ const daily=document.getElementById('daily');if(daily){new MutationObserver(cleanDaily).observe(daily,{childList:true,subtree:true});}
+})();
+</script>
+
 </body></html>

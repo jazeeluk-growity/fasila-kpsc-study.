@@ -165,4 +165,22 @@ render();
 })();
 
 </script>
+
+<script>
+// Simplify Daily Tracker: remove the requested note/planning sections only.
+(function(){
+  function simplifyDailyTracker(){
+    const daily=document.getElementById('daily'); if(!daily)return;
+    ['Current Affairs Covered','Important Points / Notes','Next Day Plan'].forEach(title=>{
+      daily.querySelectorAll('h2').forEach(h=>{if(h.textContent.trim()===title){const card=h.closest('.card');if(card)card.remove();}});
+    });
+    const picker=daily.querySelector('#dailySubjectPicker');
+    if(picker){const label=picker.querySelector('span');if(label&&label.textContent.trim()==='Select All Subjects')label.textContent='Select All / Add All';}
+  }
+  simplifyDailyTracker();
+  document.addEventListener('DOMContentLoaded',simplifyDailyTracker);
+  const originalRender=window.render; if(typeof originalRender==='function'){window.render=function(){originalRender();simplifyDailyTracker();};}
+})();
+</script>
+
 </body></html>
